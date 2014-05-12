@@ -19,113 +19,110 @@ namespace flood {
                     case 'o': Settings();
                         continue;
                     case 'L':
-                    case 'l': LoadGames (); 
+                    case 'l': LoadGames();
                         continue;
                     case 'Q'://Quit
                     case 'q':
-                        return; 
+                        return;
                 }
             }
         }
 
-        private static void Game (Grid grid)
-        {
-            Console.Clear ();
-            grid.PrintOut ();
-            while (!grid.Solved()) {
-                char c = Console.ReadKey (true).KeyChar;
-                if (c == 'H' || c == 'h') {
-                    grid.Solve (false);
-                    grid.PrintOut ();
+        private static void Game(Grid grid) {
+            Console.Clear();
+            grid.PrintOut();
+            bool savedirty = false; // only confirm quitting if game is not saved.
+
+            while(!grid.Solved()) {
+                char c = Console.ReadKey(true).KeyChar;
+                if(c == 'H' || c == 'h') {
+                    grid.Solve(false);
+                    grid.PrintOut();
                     break;
                 }
-                if (c == 'S' || c == 's') {
-                    Console.WriteLine ("Saving game...");
-                    string save = grid.Export ();
-                    if (!Directory.Exists (SAVE_DIR))
-                        Directory.CreateDirectory (SAVE_DIR);
-                    string stamp = DateTimeToUnixTimestamp (DateTime.Now).ToString ();
-                    File.WriteAllText (SAVE_DIR + "/" + stamp, save);
-                    Console.WriteLine ("Done.");
+                if(c == 'S' || c == 's') {
+                    Console.WriteLine("Saving game...");
+                    string save = grid.Export();
+                    if(!Directory.Exists(SAVE_DIR))
+                        Directory.CreateDirectory(SAVE_DIR);
+                    string stamp = DateTimeToUnixTimestamp(DateTime.Now).ToString();
+                    File.WriteAllText(SAVE_DIR + "/" + stamp, save);
+                    Console.WriteLine("Done.");
+                    savedirty = false;
                     continue;
                 }
-                if (c == 'Q' || c == 'q') {
-                    if (AskUser ("Unsaved data will be lost! Continue?", false))
+                if(c == 'Q' || c == 'q') {
+                    if(!savedirty || AskUser("Unsaved data will be lost! Continue?", false))
                         break;
                     Console.Clear();
-                    grid.PrintOut ();
+                    grid.PrintOut();
                 }
-                if (!char.IsDigit (c))
+                if(!char.IsDigit(c))
                     continue;
-                int k = int.Parse (c.ToString ());
-                if (k > Grid.MAX || k == 0)
+                int k = int.Parse(c.ToString());
+                if(k > Grid.MAX || k == 0)
                     continue;
-                grid.Fill (k - 1);
-                Console.Clear ();
-                grid.PrintOut ();
+                grid.Fill(k - 1);
+                savedirty = true;
+                Console.Clear();
+                grid.PrintOut();
             }
-            if (grid.Solved ()) {
-                Console.WriteLine ("You win! \nPress any key to continue.");
+            if(grid.Solved()) {
+                Console.WriteLine("You win! \nPress any key to continue.");
                 Console.ReadKey(true);
             }
-            
         }
 
-        static void Game()
-        {
+        static void Game() {
             Game(new Grid());
         }
 
-        public static void LoadGames ()
-        {
-            if (!Directory.Exists (SAVE_DIR)) {
-                Console.WriteLine ("You need to save a game first to load it. Press S at any time while playing a game to save it.");
+        public static void LoadGames() {
+            if(!Directory.Exists(SAVE_DIR)) {
+                Console.WriteLine("You need to save a game first to load it. Press S at any time while playing a game to save it.");
                 return;
             }
-            DirectoryInfo dir = new DirectoryInfo (SAVE_DIR);
-            if (dir.GetFiles ().Length == 0) {
-                Console.WriteLine ("You need to save a game first to load it. Press S at any time while playing a game to save it.");
+            DirectoryInfo dir = new DirectoryInfo(SAVE_DIR);
+            if(dir.GetFiles().Length == 0) {
+                Console.WriteLine("You need to save a game first to load it. Press S at any time while playing a game to save it.");
                 return;
             }
-            Console.WriteLine ("Select a game to load it:");
+            Console.WriteLine("Select a game to load it:");
             int c = 1;
-            FileInfo[] files = dir.GetFiles ();
-            foreach (FileInfo file in files) {
-                Console.WriteLine ("{0}) {1}", c++, UnixTimeStampToDateTime (int.Parse (file.Name)).ToString());
+            FileInfo[] files = dir.GetFiles();
+            foreach(FileInfo file in files) {
+                Console.WriteLine("{0}) {1}", c++, UnixTimeStampToDateTime(int.Parse(file.Name)).ToString());
             }
         select_save:
-            string str = Console.ReadLine ();
+            string str = Console.ReadLine();
             int sel = 0;
-            if (!int.TryParse (str, out sel) || sel > files.Length) {
-                Console.WriteLine ("Please try again.");
+            if(!int.TryParse(str, out sel) || sel > files.Length) {
+                Console.WriteLine("Please try again.");
                 goto select_save;
             }
-            string cont = File.ReadAllText (files[sel - 1].FullName);
-            Game (Grid.Import (cont));
+            string cont = File.ReadAllText(files[sel - 1].FullName);
+            Game(Grid.Import(cont));
         }
 
-        public static bool AskUser (string msg, bool def)
-        {
-            Console.Write (msg + "[" + (def ? "Y" : "N") + (def ? "/n" : "/y") + "]: ");
-            char c = Console.ReadKey ().KeyChar;
+        public static bool AskUser(string msg, bool def) {
+            Console.Write(msg + "[" + (def ? "Y" : "N") + (def ? "/n" : "/y") + "]: ");
+            char c = Console.ReadKey().KeyChar;
             if(c == 'y' || c == 'Y')
                 return true;
             if(c == 'n' || c == 'N')
                 return false;
             if(c == (char)10)
                 return def;
-            return AskUser (msg, def);
+            return AskUser(msg, def);
         }
 
-        public static DateTime UnixTimeStampToDateTime(int stamp)
-        {
+        public static DateTime UnixTimeStampToDateTime(int stamp) {
             DateTime dt = new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc);
             dt = dt.AddSeconds(stamp).ToLocalTime();
             return dt;
         }
 
-        public static int DateTimeToUnixTimestamp(DateTime dt)
-        {
+        public static int DateTimeToUnixTimestamp(DateTime dt) {
             return (int)(dt - new DateTime(1970, 1, 1).ToLocalTime()).TotalSeconds;
         }
         private static void Settings() {
@@ -175,11 +172,11 @@ namespace flood {
                                         ConsoleColor.Red,
                                         ConsoleColor.Green,
                                 };
-        public Grid() : this(WIDTH, HEIGHT, MAX) {
+        public Grid()
+            : this(WIDTH, HEIGHT, MAX) {
 
         }
-        public Grid(int width, int height, int max)
-        {
+        public Grid(int width, int height, int max) {
             localwidth = width;
             localheight = height;
             localmax = max;
@@ -248,17 +245,6 @@ namespace flood {
             }
         }
 
-        public List<KeyValuePair<int, int>> GetNeighbors(int x, int y) {
-            var ret = new List<KeyValuePair<int, int>>();
-            ret.Add(new KeyValuePair<int, int>(x, y));
-            ret.Add(new KeyValuePair<int, int>(x + 1, y));
-            ret.Add(new KeyValuePair<int, int>(x - 1, y));
-            ret.Add(new KeyValuePair<int, int>(x, y + 1));
-            ret.Add(new KeyValuePair<int, int>(x, y - 1));
-            return ret;
-        }
-
-
         public int GetBestColor() {
             //basically the same algorithm as the landfill but it doesn't fill but stores 
             //which neighbouring color is the most common. Only a heuristic - not really the best option.
@@ -288,29 +274,27 @@ namespace flood {
             return colors.ToList().IndexOf(colors.Max());
         }
 
-        public string Export()
-        {
+        public string Export() {
             return string.Format("W:{0}\n" +
                                  "H:{1}\n" +
                                  "M:{2}\n" +
-                                 "{3}\n", 
+                                 "{3}\n",
                                  localwidth,
                                  localheight,
                                  localmax,
                                  this.RawDump());
 
         }
-        public static Grid Import (string save)
-        {
-            string[] lines = save.Split (new []{'\n'});
-            int w = int.Parse (lines [0].Split (new []{':'}) [1]);
-            int h = int.Parse (lines [1].Split (new []{':'}) [1]);
-            int m = int.Parse (lines [2].Split (new []{':'}) [1]);
-            string array_data = lines [3];
-            Grid grid = new Grid (w, h, m);
-            for (int x = 0; x < w; x++) {
+        public static Grid Import(string save) {
+            string[] lines = save.Split(new[] { '\n' });
+            int w = int.Parse(lines[0].Split(new[] { ':' })[1]);
+            int h = int.Parse(lines[1].Split(new[] { ':' })[1]);
+            int m = int.Parse(lines[2].Split(new[] { ':' })[1]);
+            string array_data = lines[3];
+            Grid grid = new Grid(w, h, m);
+            for(int x = 0; x < w; x++) {
                 for(int y = 0; y < h; y++) {
-                    grid.arr[x,y] = int.Parse (array_data[(x * w) + y].ToString ());
+                    grid.arr[x, y] = int.Parse(array_data[(x * w) + y].ToString());
                 }
             }
             return grid;
@@ -327,13 +311,12 @@ namespace flood {
             }
             Console.BackgroundColor = ConsoleColor.Black;
         }
-        public string RawDump ()
-        {
+        public string RawDump() {
             string ret = "";
-            for (int x = 0; x < localwidth; x++) {
+            for(int x = 0; x < localwidth; x++) {
                 for(int y = 0; y < localheight; y++) {
-                    ret += arr[x,y].ToString ();
-                }                          
+                    ret += arr[x, y].ToString();
+                }
             }
             return ret;
         }
