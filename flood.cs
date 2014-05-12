@@ -10,7 +10,7 @@ namespace flood {
             while(true) {
                 Console.Clear();
                 Console.WriteLine("Welcome to Flood Fill™!");
-                Console.WriteLine("Press S to start, O to change options, L to load a saved game or Q to quit.");
+                Console.WriteLine("Press\n S to start,\n O to change options,\n L to load a saved game,\n D to delete a saved game or\n Q to quit.");
                 switch(Console.ReadKey(true).KeyChar) {
                     case 'S': //Start
                     case 's': Game();
@@ -20,6 +20,9 @@ namespace flood {
                         continue;
                     case 'L':
                     case 'l': LoadGames();
+                        continue;
+                    case 'D':
+                    case 'd': DeleteSaveGames();
                         continue;
                     case 'Q'://Quit
                     case 'q':
@@ -79,12 +82,14 @@ namespace flood {
 
         public static void LoadGames() {
             if(!Directory.Exists(SAVE_DIR)) {
-                Console.WriteLine("You need to save a game first to load it. Press S at any time while playing a game to save it.");
+                Console.WriteLine("You need to save a game first to load it.\nPress S at any time while playing a game to save it.");
+                Console.ReadKey(true);
                 return;
             }
             DirectoryInfo dir = new DirectoryInfo(SAVE_DIR);
             if(dir.GetFiles().Length == 0) {
-                Console.WriteLine("You need to save a game first to load it. Press S at any time while playing a game to save it.");
+                Console.WriteLine("You need to save a game first to load it.\nPress S at any time while playing a game to save it.");
+                Console.ReadKey(true);
                 return;
             }
             Console.WriteLine("Select a game to load it:");
@@ -102,6 +107,35 @@ namespace flood {
             }
             string cont = File.ReadAllText(files[sel - 1].FullName);
             Game(Grid.Import(cont));
+        }
+
+        public static void DeleteSaveGames() {
+            if(!Directory.Exists(SAVE_DIR)) {
+                Console.WriteLine("You need to save a game first.\nPress S at any time while playing a game to save it.");
+                Console.ReadKey(true);
+                return;
+            }
+            DirectoryInfo dir = new DirectoryInfo(SAVE_DIR);
+            if(dir.GetFiles().Length == 0) {
+                Console.WriteLine("You need to save a game first.\nPress S at any time while playing a game to save it.");
+                Console.ReadKey(true);
+                return;
+            }
+            Console.WriteLine("Select a savegame to delete it.\nIf you want to delete more than one seperate them with spaces:");
+            int c = 1;
+            FileInfo[] files = dir.GetFiles();
+            foreach(FileInfo file in files) {
+                Console.WriteLine("{0}) {1}", c++, UnixTimeStampToDateTime(int.Parse(file.Name)).ToString());
+            }
+            string[] strings = Console.ReadLine().Split(' ');
+            foreach(string str in strings) {
+                int sel = 0;
+                if(!int.TryParse(str, out sel) || sel > files.Length) {
+                    Console.WriteLine("Invalid number: {0}", str);
+                    continue;
+                } else
+                    files[sel - 1].Delete();
+            }
         }
 
         public static bool AskUser(string msg, bool def) {
