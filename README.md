@@ -3,7 +3,7 @@ floodfill
 
 What is this
 =========
-This is a basic game created by hexafluoride(with a few initial commits by @oerpli on GitHub.
+This is a basic game created by hexafluoride(with a few initial commits by @oerpli on GitHub).
 You're allowed to do anything with the software. For more info, refer to the LICENSE file.
 
 How to compile
