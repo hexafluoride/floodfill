@@ -7,19 +7,19 @@ namespace flood {
     class MainClass {
         static string SAVE_DIR = "./.ffill_saves";
         public static void Main(string[] args) {
-            if (args.Length != 0) {
-                if(args[0] == "--help") 
-                {
-                    Console.WriteLine("Usage: flood.exe [/path/to/save/file] | [--help]\n");
-                    Console.WriteLine("--help     \tShows this text.\n");
-                    Console.WriteLine("FloodFill will automatically start a specified game if a save file is specified.");
-                    return;
-                } 
-                else
-                {
-                    StartGameByFile(string.Join(" ", args));
-                }
-            }
+			if (args.Length != 0) {
+				if(args[0] == "--help") 
+				{
+					Console.WriteLine("Usage: flood.exe [/path/to/save/file] | [--help]\n");
+					Console.WriteLine("--help     \tShows this text.\n");
+					Console.WriteLine("FloodFill will automatically start a specified game if a save file is specified.");
+					return;
+				} 
+				else
+				{
+					StartGameByFile(string.Join(" ", args));
+				}
+			}
             while(true) {
                 Console.Clear();
                 Console.WriteLine("Welcome to Flood Fill™!");
@@ -89,15 +89,15 @@ namespace flood {
             }
         }
 
-        public static void StartGameByFile(string filename)
-        {
-            if (!File.Exists(filename)) {
-                Console.Error.WriteLine("ERROR: Save file doesn't exist.");
-                Environment.Exit(1);
-            }
-            string cont = File.ReadAllText(filename);
+		public static void StartGameByFile(string filename)
+		{
+			if (!File.Exists(filename)) {
+				Console.Error.WriteLine("ERROR: Save file doesn't exist.");
+				Environment.Exit(1);
+			}
+			string cont = File.ReadAllText(filename);
             Game(Grid.Import(cont));
-        }
+		}
 
         static void Game() {
             Game(new Grid());
@@ -342,12 +342,12 @@ namespace flood {
 
         }
          public static Grid Import(string save)
-        {
-            string[] lines = save.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
-            if (lines.Length != 4) {
-                Console.Error.WriteLine("ERROR: Invalid save file, returning random Grid");
-                return new Grid();
-            }
+		{
+			string[] lines = save.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+			if (lines.Length != 4) {
+				Console.Error.WriteLine("ERROR: Invalid save file, returning random Grid");
+				return new Grid();
+			}
             int w = int.Parse(lines[0].Split(new[] { ':' })[1]);
             int h = int.Parse(lines[1].Split(new[] { ':' })[1]);
             int m = int.Parse(lines[2].Split(new[] { ':' })[1]);
@@ -355,12 +355,12 @@ namespace flood {
             Grid grid = new Grid(w, h, m);
             for(int x = 0; x < w; x++) {
                 for(int y = 0; y < h; y++) {
-                    int val = int.Parse(array_data[(x * w) + y].ToString());
-                    if(val > m)
-                    {
-                        Console.Error.WriteLine("WARNING: Value bigger than MAX at {0}, {1}, truncating to MAX", x, y);
-                        val = m;
-                    }
+					int val = int.Parse(array_data[(x * w) + y].ToString());
+					if(val > m)
+					{
+						Console.Error.WriteLine("WARNING: Value bigger than MAX at {0}, {1}, truncating to MAX", x, y);
+						val = m;
+					}
                     grid.arr[x, y] = val;
                 }
             }
@@ -369,10 +369,10 @@ namespace flood {
 
         public void PrintOut() {
             Console.Clear();
-            for(int x = 0; x < localwidth; x++) {
-                for(int y = 0; y < localheight; y++) {
-                    Console.BackgroundColor = COLORS[arr[y, x]];
-                    Console.Write(arr[y, x] + 1);
+            for(int y = 0; y < localheight; y++) {
+                for(int x = 0; x < localwidth; x++) {
+                    Console.BackgroundColor = COLORS[arr[x, y]];
+                    Console.Write(arr[x, y] + 1);
                 }
                 Console.WriteLine();
             }
