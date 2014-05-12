@@ -7,6 +7,19 @@ namespace flood {
     class MainClass {
         static string SAVE_DIR = "./.ffill_saves";
         public static void Main(string[] args) {
+			if (args.Length != 0) {
+				if(args[0] == "--help") 
+				{
+					Console.WriteLine("Usage: flood.exe [/path/to/save/file] | [--help]\n");
+					Console.WriteLine("--help     \tShows this text.\n");
+					Console.WriteLine("FloodFill will automatically start a specified game if a save file is specified.");
+					return;
+				} 
+				else
+				{
+					StartGameByFile(string.Join(" ", args));
+				}
+			}
             while(true) {
                 Console.Clear();
                 Console.WriteLine("Welcome to Flood Fill™!");
@@ -76,6 +89,16 @@ namespace flood {
             }
         }
 
+		public static void StartGameByFile(string filename)
+		{
+			if (!File.Exists(filename)) {
+				Console.Error.WriteLine("ERROR: Save file doesn't exist.");
+				Environment.Exit(1);
+			}
+			string cont = File.ReadAllText(filename);
+            Game(Grid.Import(cont));
+		}
+
         static void Game() {
             Game(new Grid());
         }
@@ -105,8 +128,7 @@ namespace flood {
                 Console.WriteLine("Please try again.");
                 goto select_save;
             }
-            string cont = File.ReadAllText(files[sel - 1].FullName);
-            Game(Grid.Import(cont));
+            StartGameByFile(files[sel - 1].FullName);
         }
 
         public static void DeleteSaveGames() {
@@ -121,7 +143,7 @@ namespace flood {
                 Console.ReadKey(true);
                 return;
             }
-            Console.WriteLine("Select a savegame to delete it.\nIf you want to delete more than one seperate them with spaces:");
+            Console.WriteLine("Select a savegame to delete it.\nIf you want to delete more than one separate them with spaces:");
             int c = 1;
             FileInfo[] files = dir.GetFiles();
             foreach(FileInfo file in files) {
@@ -319,8 +341,13 @@ namespace flood {
                                  this.RawDump());
 
         }
-        public static Grid Import(string save) {
-            string[] lines = save.Split(new[] { '\n' });
+         public static Grid Import(string save)
+		{
+			string[] lines = save.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+			if (lines.Length != 4) {
+				Console.Error.WriteLine("ERROR: Invalid save file, returning random Grid");
+				return new Grid();
+			}
             int w = int.Parse(lines[0].Split(new[] { ':' })[1]);
             int h = int.Parse(lines[1].Split(new[] { ':' })[1]);
             int m = int.Parse(lines[2].Split(new[] { ':' })[1]);
@@ -328,7 +355,13 @@ namespace flood {
             Grid grid = new Grid(w, h, m);
             for(int x = 0; x < w; x++) {
                 for(int y = 0; y < h; y++) {
-                    grid.arr[x, y] = int.Parse(array_data[(x * w) + y].ToString());
+					int val = int.Parse(array_data[(x * w) + y].ToString());
+					if(val > m)
+					{
+						Console.Error.WriteLine("WARNING: Value bigger than MAX at {0}, {1}, truncating to MAX", x, y);
+						val = m;
+					}
+                    grid.arr[x, y] = val;
                 }
             }
             return grid;
