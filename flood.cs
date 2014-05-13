@@ -23,7 +23,7 @@ namespace flood {
             while(true) {
                 Console.Clear();
                 Console.WriteLine("Welcome to Flood Fill™!");
-                Console.WriteLine("Press\n S to start,\n O to change options,\n L to load a saved game,\n D to delete a saved game or\n Q to quit.");
+                Console.WriteLine("Press\n S to start in standard mode,\n C to start in challenge mode,\n O to change options,\n L to load a saved game,\n D to delete a saved game or\n Q to quit.");
                 switch(Console.ReadKey(true).KeyChar) {
                     case 'S': //Start
                     case 's': Game();
@@ -37,26 +37,56 @@ namespace flood {
                     case 'D':
                     case 'd': DeleteSaveGames();
                         continue;
+                    case 'C':
+                    case 'c': Challenge();
+                        continue;
                     case 'Q'://Quit
                     case 'q':
                         return;
                 }
             }
         }
+        private static void Challenge()
+        {
+            int c_width = 19;
+            int c_height = 19;
+            int c_max = 4;
+            for (int i = 1; i < 6; i++) {
 
-        private static void Game(Grid grid) {
+                for(int k = 10; k > 0; k--) {
+                    if(!Game(new Grid(c_width, c_height, c_max), 
+                         k, 
+                         string.Format("Stage {0}, level {1}", i, (10 - k) + 1), 
+                         true, false))
+                        break;
+                }
+                c_width += 5;
+                c_height += 5;
+                c_max++;
+            }
+        }
+        private static bool Game(Grid grid, int tolerance = 5, string display = "", bool challenge = false, bool instasolve = false) {
             Console.Clear();
+            int moves = grid.GetNumberOfSteps() + tolerance;
+            Console.Write(display);
             grid.PrintOut();
+            Console.WriteLine(moves);
             bool savedirty = false; // only confirm quitting if game is not saved.
 
             while(!grid.Solved()) {
-                char c = Console.ReadKey(true).KeyChar;
-                if(c == 'H' || c == 'h') {
+                if(instasolve)
+                {
                     grid.Solve(false);
                     grid.PrintOut();
                     break;
                 }
-                if(c == 'S' || c == 's') {
+                char c = Console.ReadKey(true).KeyChar;
+                if(((c == 'H' || c == 'h') && challenge) || instasolve) {
+                    grid.Solve(false);
+                    grid.PrintOut();
+                    break;
+                }
+                if((c == 'S' || c == 's') && !challenge) { // TODO: Implement saving in challenge mode
                     Console.WriteLine("Saving game...");
                     string save = grid.Export();
                     if(!Directory.Exists(SAVE_DIR))
@@ -68,8 +98,11 @@ namespace flood {
                     continue;
                 }
                 if(c == 'Q' || c == 'q') {
-                    if(!savedirty || AskUser("Unsaved data will be lost! Continue?", false))
+                    if((!savedirty || AskUser("Unsaved data will be lost! Continue?", false)) && !challenge)
                         break;
+                    else if(challenge)
+                        if(AskUser("You're in challenge mode! All your progress will be lost! Continue?", false))
+                            break;
                     Console.Clear();
                     grid.PrintOut();
                 }
@@ -79,14 +112,26 @@ namespace flood {
                 if(k > Grid.MAX || k == 0)
                     continue;
                 grid.Fill(k - 1);
+                moves--;
+                if(moves == 0 && challenge)
+                {
+                    Console.WriteLine("You're out of moves!\nPress any key to continue.");
+                    Console.ReadKey();
+                    return false;
+                }
                 savedirty = true;
                 Console.Clear();
+                Console.Write(display);
+                if(challenge)
+                    Console.WriteLine(", {0} moves left.", moves);
                 grid.PrintOut();
             }
             if(grid.Solved()) {
-                Console.WriteLine("You win! \nPress any key to continue.");
+                Console.WriteLine("You won with {0} moves left! \nPress any key to continue.", moves);
                 Console.ReadKey(true);
+                return true;
             }
+            return false;
         }
 
         public static void StartGameByFile(string filename)
@@ -215,6 +260,7 @@ namespace flood {
         public int localwidth = WIDTH;  // for loading games
         public int localheight = HEIGHT;//
         public int localmax = MAX;      //
+        public int seed = 0;
 
         public int[,] arr = new int[WIDTH, HEIGHT];
         ConsoleColor[] COLORS = new ConsoleColor[]{
@@ -232,12 +278,18 @@ namespace flood {
             : this(WIDTH, HEIGHT, MAX) {
 
         }
-        public Grid(int width, int height, int max) {
+        public Grid(int width, int height, int max, int s = 0)
+        {
             localwidth = width;
             localheight = height;
             localmax = max;
             arr = new int[width, height];
-            Random rnd = new Random();
+            Random s1 = new Random();
+            if (s == 0) {
+                s = s1.Next();
+                seed = s;
+            }
+            Random rnd = new Random(s);
             for(int x = 0; x < localwidth; x++) {
                 for(int y = 0; y < localheight; y++) {
                     arr[x, y] = rnd.Next(localmax);
@@ -252,14 +304,13 @@ namespace flood {
                     int k = this.GetBestColor();
                     ret += k.ToString();
                     this.Fill(k);
-                    System.Threading.Thread.Sleep(150);
-                    this.PrintOut();
                 }
                 return ret;
             } else {
                 while(!this.Solved()) {
                     this.Fill(GetBestColor());
-                    System.Threading.Thread.Sleep(150);
+                    System.Threading.Thread.Sleep(10);
+                    Console.SetCursorPosition(0,1);
                     this.PrintOut();
                 }
                 return "";
@@ -299,6 +350,13 @@ namespace flood {
                 if(y + 1 < localheight && !visited[x, y + 1])
                     nodes.Push(new KeyValuePair<int, int>(x, y + 1));
             }
+        }
+
+        public int GetNumberOfSteps()
+        {
+            Grid gr = new Grid(localwidth, localheight, localmax, seed);
+            string str = gr.Solve(true);
+            return str.Length;
         }
 
         public int GetBestColor() {
@@ -368,8 +426,11 @@ namespace flood {
         }
 
         public void PrintOut() {
-            Console.Clear();
+            int top = 1;
+            int left = (Console.WindowWidth - localwidth) / 2;
             for(int y = 0; y < localheight; y++) {
+                Console.CursorLeft = left;
+                Console.CursorTop = top + y;
                 for(int x = 0; x < localwidth; x++) {
                     Console.BackgroundColor = COLORS[arr[x, y]];
                     Console.Write(arr[x, y] + 1);
