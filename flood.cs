@@ -4,8 +4,13 @@ using System.Linq;
 using System.IO;
 
 namespace flood {
+    enum GameResult {
+        Lose, Win, Quit, Empty
+    }
     class MainClass {
         static string SAVE_DIR = "./.ffill_saves";
+        static int LEVELS_PER_STAGE = 10;
+        static int STAGES = 5;
         public static void Main(string[] args) {
             if (args.Length != 0) {
                 if(args[0] == "--help") 
@@ -46,52 +51,69 @@ namespace flood {
                 }
             }
         }
-        private static void Challenge()
+        static void Challenge()
         {
-            int c_width = 19;
-            int c_height = 19;
-            int c_max = 4;
-            for (int i = 1; i < 6; i++) {
-
-                for(int k = 10; k > 0; k--) {
-                    if(!Game(new Grid(c_width, c_height, c_max), 
-                         k, 
-                         string.Format("Stage {0}, level {1}", i, (10 - k) + 1), 
-                         true, false))
-                        break;
+            Challenge(new Grid(19, 19, 4));
+        }
+        private static void Challenge(Grid start, int c_width = 19, int c_height = 19, int c_max = 4, int level = 0, int stage = 1)
+        {
+            bool first = true;
+            for (int i = stage; i < STAGES + 1; i++) {
+                for(int k = level; k < LEVELS_PER_STAGE; k++) {
+                    GameResult win = GameResult.Empty;
+                    if(first)
+                    {
+                        win = Game(start, LEVELS_PER_STAGE - k, string.Format("Stage {0}, level {1}", i, k), true, i, k);
+                        first = false;
+                    }
+                    else
+                    {
+                        win = Game(new Grid(c_width, c_height, c_max), LEVELS_PER_STAGE - k, string.Format("Stage {0}, level {1}", i, k), true, i, k);
+                    }
+                    if(win == GameResult.Lose || win == GameResult.Quit) {
+                        Console.Clear();
+                        return;
+                    }
                 }
                 c_width += 5;
                 c_height += 5;
                 c_max++;
             }
         }
-        private static bool Game(Grid grid, int tolerance = 5, string display = "", bool challenge = false, bool instasolve = false) {
+        static void ResumeChallenge(int level, int stage, Grid grid)
+        {
+            int width = 19 + (stage * 5);
+            int height = width;
+            int max = 4 + stage;
+            Challenge(grid, width, height, max, stage, level);
+        }
+        // TODO: Clean this up and break it into functions
+        private static GameResult Game(Grid grid, int tolerance = 5, string display = "", bool challenge = false, int stage = -1, int level = -1) {
             Console.Clear();
             int moves = grid.GetNumberOfSteps() + tolerance;
             Console.Write(display);
+            if(challenge)
+                    Console.WriteLine(", {0} moves left.", moves);
             grid.PrintOut();
-            Console.WriteLine(moves);
             bool savedirty = false; // only confirm quitting if game is not saved.
 
             while(!grid.Solved()) {
-                if(instasolve)
-                {
-                    grid.Solve(false);
-                    grid.PrintOut();
-                    break;
-                }
                 char c = Console.ReadKey(true).KeyChar;
-                if(((c == 'H' || c == 'h') && challenge) || instasolve) {
+                if(((c == 'H' || c == 'h') && challenge)) {
                     grid.Solve(false);
                     grid.PrintOut();
                     break;
                 }
-                if((c == 'S' || c == 's') && !challenge) { // TODO: Implement saving in challenge mode
+                if((c == 'S' || c == 's')) {
                     Console.WriteLine("Saving game...");
                     string save = grid.Export();
                     if(!Directory.Exists(SAVE_DIR))
                         Directory.CreateDirectory(SAVE_DIR);
                     string stamp = DateTimeToUnixTimestamp(DateTime.Now).ToString();
+                    if(challenge) {
+                        stamp += "_";
+                        save += stage + ":" + level;
+                    }
                     File.WriteAllText(SAVE_DIR + "/" + stamp, save);
                     Console.WriteLine("Done.");
                     savedirty = false;
@@ -100,11 +122,10 @@ namespace flood {
                 if(c == 'Q' || c == 'q') {
                     if((!savedirty || AskUser("Unsaved data will be lost! Continue?", false)) && !challenge)
                         break;
-                    else if(challenge)
-                        if(AskUser("You're in challenge mode! All your progress will be lost! Continue?", false))
-                            break;
+                    else if((!savedirty || AskUser("You're in challenge mode! All your progress will be lost! Continue?", false)) && challenge)
+                        break;
                     Console.Clear();
-                    grid.PrintOut();
+//                    grid.PrintOut();
                 }
                 if(!char.IsDigit(c))
                     continue;
@@ -117,7 +138,7 @@ namespace flood {
                 {
                     Console.WriteLine("You're out of moves!\nPress any key to continue.");
                     Console.ReadKey();
-                    return false;
+                    return GameResult.Lose;
                 }
                 savedirty = true;
                 Console.Clear();
@@ -129,9 +150,9 @@ namespace flood {
             if(grid.Solved()) {
                 Console.WriteLine("You won with {0} moves left! \nPress any key to continue.", moves);
                 Console.ReadKey(true);
-                return true;
+                return GameResult.Win;
             }
-            return false;
+            return GameResult.Quit;
         }
 
         public static void StartGameByFile(string filename)
@@ -141,6 +162,15 @@ namespace flood {
                 Environment.Exit(1);
             }
             string cont = File.ReadAllText(filename);
+            if(filename.Contains("_"))
+            {
+                string[] lines = File.ReadAllLines(filename);
+                int stage = int.Parse(lines[4].Split(new char[]{':'})[0]);
+                int level = int.Parse(lines[4].Split(new char[]{':'})[1]);
+                Grid grid = Grid.Import(cont);
+                ResumeChallenge(level, stage, grid);
+                return;
+            }
             Game(Grid.Import(cont));
         }
 
@@ -149,23 +179,9 @@ namespace flood {
         }
 
         public static void LoadGames() {
-            if(!Directory.Exists(SAVE_DIR)) {
-                Console.WriteLine("You need to save a game first to load it.\nPress S at any time while playing a game to save it.");
-                Console.ReadKey(true);
+            FileInfo[] files = PrintSaveList();
+            if(files.Length == 0)
                 return;
-            }
-            DirectoryInfo dir = new DirectoryInfo(SAVE_DIR);
-            if(dir.GetFiles().Length == 0) {
-                Console.WriteLine("You need to save a game first to load it.\nPress S at any time while playing a game to save it.");
-                Console.ReadKey(true);
-                return;
-            }
-            Console.WriteLine("Select a game to load it:");
-            int c = 1;
-            FileInfo[] files = dir.GetFiles();
-            foreach(FileInfo file in files) {
-                Console.WriteLine("{0}) {1}", c++, UnixTimeStampToDateTime(int.Parse(file.Name)).ToString());
-            }
         select_save:
             string str = Console.ReadLine();
             int sel = 0;
@@ -177,23 +193,9 @@ namespace flood {
         }
 
         public static void DeleteSaveGames() {
-            if(!Directory.Exists(SAVE_DIR)) {
-                Console.WriteLine("You need to save a game first.\nPress S at any time while playing a game to save it.");
-                Console.ReadKey(true);
+            FileInfo[] files = PrintSaveList("delete");
+            if(files.Length == 0)
                 return;
-            }
-            DirectoryInfo dir = new DirectoryInfo(SAVE_DIR);
-            if(dir.GetFiles().Length == 0) {
-                Console.WriteLine("You need to save a game first.\nPress S at any time while playing a game to save it.");
-                Console.ReadKey(true);
-                return;
-            }
-            Console.WriteLine("Select a savegame to delete it.\nIf you want to delete more than one separate them with spaces:");
-            int c = 1;
-            FileInfo[] files = dir.GetFiles();
-            foreach(FileInfo file in files) {
-                Console.WriteLine("{0}) {1}", c++, UnixTimeStampToDateTime(int.Parse(file.Name)).ToString());
-            }
             string[] strings = Console.ReadLine().Split(' ');
             foreach(string str in strings) {
                 int sel = 0;
@@ -203,6 +205,40 @@ namespace flood {
                 } else
                     files[sel - 1].Delete();
             }
+        }
+
+        public static FileInfo[] PrintSaveList(string action = "load")
+        {
+            FileInfo[] empty = new FileInfo[0];
+            if(!Directory.Exists(SAVE_DIR)) {
+                Console.WriteLine("You need to save a game first to {0} it.\nPress S at any time while playing a game to save it.", action);
+                Console.ReadKey(true);
+                return empty;
+            }
+            DirectoryInfo dir = new DirectoryInfo(SAVE_DIR);
+            if(dir.GetFiles().Length == 0) {
+                Console.WriteLine("You need to save a game first to {0} it.\nPress S at any time while playing a game to save it.", action);
+                Console.ReadKey(true);
+                return empty;
+            }
+            Console.WriteLine("Select a game to {0} it:", action);
+            int c = 1;
+            FileInfo[] files = dir.GetFiles();
+            foreach(FileInfo file in files) {
+                string name = file.Name.Replace("_", "");
+                if(name.Count(t => !char.IsNumber(t)) > 0) 
+                {
+                    Console.Error.WriteLine("ERROR: Skipping save file {0}, invalid name", name);
+                    continue;
+                }
+                DateTime time = UnixTimeStampToDateTime(int.Parse(name));
+                Console.Write("{0}) {1}", c++, time.ToString());
+                if(file.Name.Contains("_"))
+                    Console.WriteLine(", challenge mode");
+                else
+                    Console.WriteLine();
+            }
+            return files;
         }
 
         public static bool AskUser(string msg, bool def) {
@@ -402,7 +438,7 @@ namespace flood {
          public static Grid Import(string save)
         {
             string[] lines = save.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
-            if (lines.Length != 4) {
+            if (lines.Length < 4) {
                 Console.Error.WriteLine("ERROR: Invalid save file, returning random Grid");
                 return new Grid();
             }
@@ -426,11 +462,10 @@ namespace flood {
         }
 
         public void PrintOut() {
-            int top = 1;
+            Console.CursorTop = 1;
             int left = (Console.WindowWidth - localwidth) / 2;
             for(int y = 0; y < localheight; y++) {
                 Console.CursorLeft = left;
-                Console.CursorTop = top + y;
                 for(int x = 0; x < localwidth; x++) {
                     Console.BackgroundColor = COLORS[arr[x, y]];
                     Console.Write(arr[x, y] + 1);
