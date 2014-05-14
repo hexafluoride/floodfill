@@ -90,6 +90,11 @@ namespace flood {
 
             bool savedirty = false; // only confirm quitting if game is not saved.
             while(!grid.Solved) {
+                if(challenge && moves == 0) {
+                    Console.WriteLine("You're out of moves!\nPress any key to continue.");
+                    Console.ReadKey();
+                    return GameResult.Lose;
+                }
                 char c = Console.ReadKey(true).KeyChar;
                 if(((c == 'H' || c == 'h') && challenge)) {//why is this only possible in challenge mode?
                     grid.Solve(false);
@@ -113,11 +118,6 @@ namespace flood {
                 }
                 //All input is handled - print the updated grid and check if challenge mode is lost
                 PrintGame(grid, challenge, display, moves);
-                if(challenge && moves == 0) {
-                    Console.WriteLine("You're out of moves!\nPress any key to continue.");
-                    Console.ReadKey();
-                    return GameResult.Lose;
-                }
             }
             if(grid.Solved) {//this should always be true - if it's not something has gone wrong.
                 PrintGame(grid, challenge, display, moves);
