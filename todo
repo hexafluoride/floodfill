@@ -1,1 +1,0 @@
--Check if directory exists right before deletion/loading as it can crash otherwise.
