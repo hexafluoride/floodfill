@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
@@ -12,16 +12,13 @@ namespace flood {
         static int LEVELS_PER_STAGE = 10;
         static int STAGES = 5;
         public static void Main(string[] args) {
-            if (args.Length != 0) {
-                if(args[0] == "--help") 
-                {
+            if(args.Length != 0) {
+                if(args[0] == "--help") {
                     Console.WriteLine("Usage: flood.exe [/path/to/save/file] | [--help]\n");
                     Console.WriteLine("--help     \tShows this text.\n");
                     Console.WriteLine("FloodFill will automatically start a specified game if a save file is specified.");
                     return;
-                } 
-                else
-                {
+                } else {
                     StartGameByFile(string.Join(" ", args));
                 }
             }
@@ -51,23 +48,18 @@ namespace flood {
                 }
             }
         }
-        static void Challenge()
-        {
+        static void Challenge() {
             Challenge(new Grid(19, 19, 4));
         }
-        private static void Challenge(Grid start, int c_width = 19, int c_height = 19, int c_max = 4, int level = 0, int stage = 1)
-        {
+        private static void Challenge(Grid start, int c_width = 19, int c_height = 19, int c_max = 4, int level = 0, int stage = 1) {
             bool first = true;
-            for (int i = stage; i < STAGES + 1; i++) {
+            for(int i = stage; i < STAGES + 1; i++) {
                 for(int k = level; k < LEVELS_PER_STAGE; k++) {
                     GameResult win = GameResult.Empty;
-                    if(first)
-                    {
+                    if(first) {
                         win = Game(start, LEVELS_PER_STAGE - k, string.Format("Stage {0}, level {1}", i, k), true, i, k);
                         first = false;
-                    }
-                    else
-                    {
+                    } else {
                         win = Game(new Grid(c_width, c_height, c_max), LEVELS_PER_STAGE - k, string.Format("Stage {0}, level {1}", i, k), true, i, k);
                     }
                     if(win == GameResult.Lose || win == GameResult.Quit) {
@@ -80,93 +72,109 @@ namespace flood {
                 c_max++;
             }
         }
-        static void ResumeChallenge(int level, int stage, Grid grid)
-        {
+        static void ResumeChallenge(int level, int stage, Grid grid) {
             int width = 19 + (stage * 5);
             int height = width;
             int max = 4 + stage;
             Challenge(grid, width, height, max, stage, level);
         }
+
+
+
         // TODO: Clean this up and break it into functions
         private static GameResult Game(Grid grid, int tolerance = 5, string display = "", bool challenge = false, int stage = -1, int level = -1) {
             Console.Clear();
             int moves = grid.GetNumberOfSteps() + tolerance;
-            Console.Write(display);
-            if(challenge)
-                    Console.WriteLine(", {0} moves left.", moves);
-            grid.PrintOut();
-            bool savedirty = false; // only confirm quitting if game is not saved.
 
-            while(!grid.Solved()) {
+            PrintGame(grid, challenge, display, moves);
+
+            bool savedirty = false; // only confirm quitting if game is not saved.
+            while(!grid.Solved) {
                 char c = Console.ReadKey(true).KeyChar;
-                if(((c == 'H' || c == 'h') && challenge)) {
+                if(((c == 'H' || c == 'h') && challenge)) {//why is this only possible in challenge mode?
                     grid.Solve(false);
                     grid.PrintOut();
                     break;
-                }
-                if((c == 'S' || c == 's')) {
-                    Console.WriteLine("Saving game...");
-                    string save = grid.Export();
-                    if(!Directory.Exists(SAVE_DIR))
-                        Directory.CreateDirectory(SAVE_DIR);
-                    string stamp = DateTimeToUnixTimestamp(DateTime.Now).ToString();
-                    if(challenge) {
-                        stamp += "_";
-                        save += stage + ":" + level;
-                    }
-                    File.WriteAllText(SAVE_DIR + "/" + stamp, save);
-                    Console.WriteLine("Done.");
+                } else if((c == 'S' || c == 's')) {
+                    SaveGame(grid, challenge, stage, level);
                     savedirty = false;
+                } else if(c == 'Q' || c == 'q') {
+                    if(!savedirty || QuitGame(challenge)) {
+                        return GameResult.Quit;
+                    }
+                } else if(char.IsDigit(c)) {
+                    bool validDigit = grid.Move(c);
+                    if(validDigit) {
+                        moves--;
+                        savedirty = true;
+                    }
+                } else {//no valid key was pressed - wait for next key.
                     continue;
                 }
-                if(c == 'Q' || c == 'q') {
-                    if((!savedirty || AskUser("Unsaved data will be lost! Continue?", false)) && !challenge)
-                        break;
-                    else if((!savedirty || AskUser("You're in challenge mode! All your progress will be lost! Continue?", false)) && challenge)
-                        break;
-                    Console.Clear();
-//                    grid.PrintOut();
-                }
-                if(!char.IsDigit(c))
-                    continue;
-                int k = int.Parse(c.ToString());
-                if(k > Grid.MAX || k == 0)
-                    continue;
-                grid.Fill(k - 1);
-                moves--;
-                if(moves == 0 && challenge)
-                {
+                //All input is handled - print the updated grid and check if challenge mode is lost
+                PrintGame(grid, challenge, display, moves);
+                if(challenge && moves == 0) {
                     Console.WriteLine("You're out of moves!\nPress any key to continue.");
                     Console.ReadKey();
                     return GameResult.Lose;
                 }
-                savedirty = true;
-                Console.Clear();
-                Console.Write(display);
-                if(challenge)
-                    Console.WriteLine(", {0} moves left.", moves);
-                grid.PrintOut();
             }
-            if(grid.Solved()) {
-                Console.WriteLine("You won with {0} moves left! \nPress any key to continue.", moves);
+            if(grid.Solved) {//this should always be true - if it's not something has gone wrong.
+                PrintGame(grid, challenge, display, moves);
+                if(challenge)
+                    Console.WriteLine("You won with {0} moves left! \nPress any key to continue.", moves);
+                else
+                    Console.WriteLine("You won! \nPress any key to continue.");
                 Console.ReadKey(true);
                 return GameResult.Win;
             }
+            //basically unreachable code.
             return GameResult.Quit;
         }
 
-        public static void StartGameByFile(string filename)
-        {
-            if (!File.Exists(filename)) {
+        private static void PrintGame(Grid grid, bool challengeMode, string display, int moves) {
+            Console.Clear();
+            Console.Write(display);
+            if(challengeMode)
+                Console.WriteLine(", {0} moves left.", moves);
+            grid.PrintOut();
+        }
+
+        public static void SaveGame(Grid grid, bool challengeMode, int stage, int level) {
+            Console.WriteLine("Saving game...");
+            string save = grid.Export();
+            if(!Directory.Exists(SAVE_DIR))
+                Directory.CreateDirectory(SAVE_DIR);
+            string stamp = DateTimeToUnixTimestamp(DateTime.Now).ToString();
+            if(challengeMode) {
+                stamp += "_";
+                save += stage + ":" + level;
+            }
+            File.WriteAllText(SAVE_DIR + "/" + stamp, save);
+            Console.WriteLine("Done. Press any key to continue");
+            Console.ReadKey(true);
+        }
+
+        public static bool QuitGame(bool challengeMode) {
+            string question;
+            if(challengeMode)
+                question = "You're in challenge mode! All your progress will be lost! Continue?";
+            else
+                question = "Unsaved data will be lost! Continue?";
+            return AskUser(question, false);
+
+        }
+
+        public static void StartGameByFile(string filename) {
+            if(!File.Exists(filename)) {
                 Console.Error.WriteLine("ERROR: Save file doesn't exist.");
                 Environment.Exit(1);
             }
             string cont = File.ReadAllText(filename);
-            if(filename.Contains("_"))
-            {
+            if(filename.Contains("_")) {
                 string[] lines = File.ReadAllLines(filename);
-                int stage = int.Parse(lines[4].Split(new char[]{':'})[0]);
-                int level = int.Parse(lines[4].Split(new char[]{':'})[1]);
+                int stage = int.Parse(lines[4].Split(new char[] { ':' })[0]);
+                int level = int.Parse(lines[4].Split(new char[] { ':' })[1]);
                 Grid grid = Grid.Import(cont);
                 ResumeChallenge(level, stage, grid);
                 return;
@@ -179,6 +187,7 @@ namespace flood {
         }
 
         public static void LoadGames() {
+            //TODO: implement something to abort loading a game. (pressing escape or whatever)
             FileInfo[] files = PrintSaveList();
             if(files.Length == 0)
                 return;
@@ -206,13 +215,17 @@ namespace flood {
                 if(!int.TryParse(str, out sel) || sel > files.Length) {
                     Console.WriteLine("Invalid number: {0}", str);
                     continue;
-                } else
+                } else {
+                    if(!Directory.Exists(SAVE_DIR)) {
+                        Console.Error.WriteLine("ERROR: Save directory disappeared!");
+                        return;
+                    }
                     files[sel - 1].Delete();
+                }
             }
         }
 
-        public static FileInfo[] PrintSaveList(string action = "load")
-        {
+        public static FileInfo[] PrintSaveList(string action = "load") {
             FileInfo[] empty = new FileInfo[0];
             if(!Directory.Exists(SAVE_DIR)) {
                 Console.WriteLine("You need to save a game first to {0} it.\nPress S at any time while playing a game to save it.", action);
@@ -230,8 +243,7 @@ namespace flood {
             FileInfo[] files = dir.GetFiles();
             foreach(FileInfo file in files) {
                 string name = file.Name.Replace("_", "");
-                if(name.Count(t => !char.IsNumber(t)) > 0) 
-                {
+                if(name.Count(t => !char.IsNumber(t)) > 0) {
                     Console.Error.WriteLine("ERROR: Skipping save file {0}, invalid name", name);
                     continue;
                 }
@@ -247,7 +259,11 @@ namespace flood {
 
         public static bool AskUser(string msg, bool def) {
             Console.Write(msg + "[" + (def ? "Y" : "N") + (def ? "/n" : "/y") + "]: ");
-            char c = Console.ReadKey().KeyChar;
+            var k = Console.ReadKey();
+            if(k.Key == ConsoleKey.Escape) {
+                return def;
+            }
+            char c = k.KeyChar;
             if(c == 'y' || c == 'Y')
                 return true;
             if(c == 'n' || c == 'N')
@@ -256,22 +272,20 @@ namespace flood {
                 return def;
             return AskUser(msg, def);
         }
-
-        public static DateTime UnixTimeStampToDateTime(int stamp) {
-            DateTime dt = new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc);
-            dt = dt.AddSeconds(stamp).ToLocalTime();
-            return dt;
-        }
-
-        public static int DateTimeToUnixTimestamp(DateTime dt) {
-            return (int)(dt - new DateTime(1970, 1, 1).ToLocalTime()).TotalSeconds;
-        }
         private static void Settings() {
             Grid.HEIGHT = PromptNumber("Enter grid height(must be an odd number)", Grid.HEIGHT);
             Grid.WIDTH = PromptNumber("Enter grid width(must be an odd number)", Grid.WIDTH);
             Grid.MAX = Math.Min(PromptNumber("Enter maximum value (max 9)", Grid.MAX), 9);
             if(Grid.HEIGHT % 2 == 0) Grid.HEIGHT++;
             if(Grid.WIDTH % 2 == 0) Grid.WIDTH++;
+        }
+        public static DateTime UnixTimeStampToDateTime(int stamp) {
+            DateTime dt = new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc);
+            dt = dt.AddSeconds(stamp).ToLocalTime();
+            return dt;
+        }
+        public static int DateTimeToUnixTimestamp(DateTime dt) {
+            return (int)(dt - new DateTime(1970, 1, 1).ToLocalTime()).TotalSeconds;
         }
         public static int PromptNumber(string msg, int def = -1) {
             if(def == -1) {
@@ -291,8 +305,8 @@ namespace flood {
                 return PromptNumber(msg, def);
             return o;
         }
-
     }
+
     class Grid {
         public static int WIDTH = 19;   // these are just used for setting default values now
         public static int HEIGHT = 19;
@@ -318,14 +332,13 @@ namespace flood {
             : this(WIDTH, HEIGHT, MAX) {
 
         }
-        public Grid(int width, int height, int max, int s = 0)
-        {
+        public Grid(int width, int height, int max, int s = 0) {
             localwidth = width;
             localheight = height;
             localmax = max;
             arr = new int[width, height];
             Random s1 = new Random();
-            if (s == 0) {
+            if(s == 0) {
                 s = s1.Next();
                 seed = s;
             }
@@ -337,34 +350,48 @@ namespace flood {
             }
         }
 
+        static char lastChar = '\0';
+        public bool Move(char c) {//returns true if char was valid.
+            int k = int.Parse(c.ToString());
+            //check if char is invalid or same as last char.
+            if(c == lastChar || k > this.localmax || k == 0) { // check against maximum of the current game!
+                return false;
+            }
+            lastChar = c;
+            this.Fill(k - 1);
+            return true;
+        }
+
         public string Solve(bool returnSolvingSequence = false) {
             if(returnSolvingSequence) {
                 string ret = "";
-                while(!this.Solved()) {
+                while(!this.Solved) {
                     int k = this.GetBestColor();
                     ret += k.ToString();
                     this.Fill(k);
                 }
                 return ret;
             } else {
-                while(!this.Solved()) {
+                while(!this.Solved) {
                     this.Fill(GetBestColor());
                     System.Threading.Thread.Sleep(10);
-                    Console.SetCursorPosition(0,1);
+                    Console.SetCursorPosition(0, 1);
                     this.PrintOut();
                 }
                 return "";
             }
         }
-        public bool Solved() {
-            int reference = arr[0, 0];//if not everything has this color it's not solved yet.
-            for(int x = 0; x < localwidth; x++) {
-                for(int y = 0; y < localheight; y++) {
-                    if(arr[x, y] != reference)
-                        return false;
+        public bool Solved {
+            get {
+                int reference = arr[0, 0];//if not everything has this color it's not solved yet.
+                for(int x = 0; x < localwidth; x++) {
+                    for(int y = 0; y < localheight; y++) {
+                        if(arr[x, y] != reference)
+                            return false;
+                    }
                 }
+                return true;
             }
-            return true;
         }
         public void Fill(int color) {
             int originalcolor = arr[localwidth / 2, localheight / 2];
@@ -392,8 +419,7 @@ namespace flood {
             }
         }
 
-        public int GetNumberOfSteps()
-        {
+        public int GetNumberOfSteps() {
             Grid gr = new Grid(localwidth, localheight, localmax, seed);
             string str = gr.Solve(true);
             return str.Length;
@@ -439,10 +465,9 @@ namespace flood {
                                  this.RawDump());
 
         }
-         public static Grid Import(string save)
-        {
+        public static Grid Import(string save) {
             string[] lines = save.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
-            if (lines.Length < 4) {
+            if(lines.Length < 4) {
                 Console.Error.WriteLine("ERROR: Invalid save file, returning random Grid");
                 return new Grid();
             }
@@ -454,8 +479,7 @@ namespace flood {
             for(int x = 0; x < w; x++) {
                 for(int y = 0; y < h; y++) {
                     int val = int.Parse(array_data[(x * w) + y].ToString());
-                    if(val > m)
-                    {
+                    if(val > m) {
                         Console.Error.WriteLine("WARNING: Value bigger than MAX at {0}, {1}, truncating to MAX", x, y);
                         val = m;
                     }
