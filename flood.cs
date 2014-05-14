@@ -206,8 +206,13 @@ namespace flood {
                 if(!int.TryParse(str, out sel) || sel > files.Length) {
                     Console.WriteLine("Invalid number: {0}", str);
                     continue;
-                } else
+                } else {
+                    if(!Directory.Exists(SAVE_DIR)) {
+                        Console.Error.WriteLine("ERROR: Save directory disappeared!");
+                        return;
+                    }
                     files[sel - 1].Delete();
+                }
             }
         }
 
