@@ -83,12 +83,9 @@ namespace flood {
 
         // TODO: Clean this up and break it into functions
         private static GameResult Game(Grid grid, int tolerance = 5, string display = "", bool challenge = false, int stage = -1, int level = -1) {
-            Console.Clear();
             int moves = grid.GetNumberOfSteps() + tolerance;
-
-            PrintGame(grid, challenge, display, moves);
-
             bool savedirty = false; // only confirm quitting if game is not saved.
+            PrintGame(grid, challenge, display, moves);
             while(!grid.Solved) {
                 if(challenge && moves == 0) {
                     Console.WriteLine("You're out of moves!\nPress any key to continue.");
@@ -98,7 +95,6 @@ namespace flood {
                 char c = Console.ReadKey(true).KeyChar;
                 if(((c == 'H' || c == 'h') && challenge)) {//why is this only possible in challenge mode?
                     grid.Solve(false);
-                    grid.PrintOut();
                     break;
                 } else if((c == 'S' || c == 's')) {
                     SaveGame(grid, challenge, stage, level);
