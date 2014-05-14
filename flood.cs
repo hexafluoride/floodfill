@@ -199,6 +199,10 @@ namespace flood {
             string[] strings = Console.ReadLine().Split(' ');
             foreach(string str in strings) {
                 int sel = 0;
+                if(!Directory.Exists(SAVE_DIR)) {
+                    Console.Error.WriteLine("ERROR: Save directory disappeared!");
+                    return;
+                }
                 if(!int.TryParse(str, out sel) || sel > files.Length) {
                     Console.WriteLine("Invalid number: {0}", str);
                     continue;
