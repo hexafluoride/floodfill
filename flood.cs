@@ -270,10 +270,23 @@ namespace flood {
         }
         private static void Settings() {
             Grid.HEIGHT = PromptNumber("Enter grid height(must be an odd number)", Grid.HEIGHT);
+            if(Grid.HEIGHT % 2 == 0) {
+                Console.WriteLine("{0} is an illegal value for grid height - set it to {1} instead", Grid.HEIGHT, Grid.HEIGHT + 1);
+                Grid.HEIGHT++;
+            }
             Grid.WIDTH = PromptNumber("Enter grid width(must be an odd number)", Grid.WIDTH);
-            Grid.MAX = Math.Min(PromptNumber("Enter maximum value (max 9)", Grid.MAX), 9);
-            if(Grid.HEIGHT % 2 == 0) Grid.HEIGHT++;
-            if(Grid.WIDTH % 2 == 0) Grid.WIDTH++;
+            if(Grid.WIDTH % 2 == 0) {
+                Console.WriteLine("{0} is an illegal value for grid width - set it to {1} instead", Grid.WIDTH, Grid.WIDTH + 1);
+                Grid.WIDTH++;
+            }
+            Grid.MAX = PromptNumber("Enter maximum value (max 9)", Grid.MAX);
+            if(Grid.MAX <= 0 || Grid.MAX > 9) {
+                int old = Grid.MAX;
+                Grid.MAX = Math.Min(9, Math.Max(0, Grid.MAX));
+                Console.WriteLine("{0} is an illegal value for maximum value - set it to {1} instead", old, Grid.MAX);
+            }
+            Console.WriteLine("Settings updated - press any key to continue.");
+            Console.ReadKey(false);
         }
         public static DateTime UnixTimeStampToDateTime(int stamp) {
             DateTime dt = new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc);
