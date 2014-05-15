@@ -93,7 +93,7 @@ namespace flood {
                     return GameResult.Lose;
                 }
                 char c = Console.ReadKey(true).KeyChar;
-                if(((c == 'H' || c == 'h') && challenge)) {//why is this only possible in challenge mode?
+                if((c == 'H' || c == 'h')) {//why is this only possible in challenge mode?
                     grid.Solve(false);
                     break;
                 } else if((c == 'S' || c == 's')) {
