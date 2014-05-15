@@ -327,6 +327,7 @@ namespace flood {
 
         public int[,] arr = new int[WIDTH, HEIGHT];
         ConsoleColor[] COLORS = new ConsoleColor[]{
+                                        ConsoleColor.White,
                                         ConsoleColor.DarkRed,
                                         ConsoleColor.DarkGreen,
                                         ConsoleColor.DarkYellow,
@@ -354,9 +355,10 @@ namespace flood {
             Random rnd = new Random(s);
             for(int x = 0; x < localwidth; x++) {
                 for(int y = 0; y < localheight; y++) {
-                    arr[x, y] = rnd.Next(localmax);
+                    arr[x, y] = rnd.Next(localmax)+1;
                 }
             }
+            arr[width / 2, height / 2] = 0;
         }
 
         static char lastChar = '\0';
@@ -367,7 +369,7 @@ namespace flood {
                 return false;
             }
             lastChar = c;
-            this.Fill(k - 1);
+            this.Fill(k);
             return true;
         }
 
@@ -437,7 +439,7 @@ namespace flood {
         public int GetBestColor() {
             //basically the same algorithm as the landfill but it doesn't fill but stores 
             //which neighbouring color is the most common. Only a heuristic - not really the best option.
-            int[] colors = new int[localmax];
+            int[] colors = new int[localmax+1];
             int originalcolor = arr[localwidth / 2, localheight / 2];
             bool[,] visited = new bool[localwidth, localheight];
             var nodes = new Stack<KeyValuePair<int, int>>();
@@ -448,7 +450,7 @@ namespace flood {
                 int y = active.Value;
                 visited[x, y] = true;
                 if(arr[x, y] != originalcolor) {
-                    colors[arr[x, y]]++;//this line differs!
+                    colors[arr[x, y]]++;
                     continue;
                 }
                 if(x + 1 < localwidth && !visited[x + 1, y])
@@ -505,7 +507,7 @@ namespace flood {
                 Console.CursorLeft = left;
                 for(int x = 0; x < localwidth; x++) {
                     Console.BackgroundColor = COLORS[arr[x, y]];
-                    Console.Write(arr[x, y] + 1);
+                    Console.Write(arr[x, y]);
                 }
                 Console.WriteLine();
             }
