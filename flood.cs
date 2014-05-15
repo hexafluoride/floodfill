@@ -205,6 +205,11 @@ namespace flood {
             if(str == null)
                 return;
             int sel = 0;
+            if(!Directory.Exists(SAVE_DIR)) {
+                Console.Error.WriteLine("ERROR: Save directory disappeared! Press any key to continue");
+                Console.ReadKey(false);
+                return;
+            }
             if(!int.TryParse(str, out sel) || sel > files.Length) {
                 Console.WriteLine("Please try again.");
                 goto select_save;
@@ -223,7 +228,8 @@ namespace flood {
             foreach(string str in strings) {
                 int sel = 0;
                 if(!Directory.Exists(SAVE_DIR)) {
-                    Console.Error.WriteLine("ERROR: Save directory disappeared!");
+                    Console.Error.WriteLine("ERROR: Save directory disappeared! Press any key to continue");
+                    Console.ReadKey(false);
                     return;
                 }
                 if(!int.TryParse(str, out sel) || sel > files.Length) {
@@ -231,7 +237,8 @@ namespace flood {
                     continue;
                 } else {
                     if(!Directory.Exists(SAVE_DIR)) {
-                        Console.Error.WriteLine("ERROR: Save directory disappeared!");
+                        Console.Error.WriteLine("ERROR: Save directory disappeared! Press any key to continue");
+                        Console.ReadKey(false);
                         return;
                     }
                     files[sel - 1].Delete();
