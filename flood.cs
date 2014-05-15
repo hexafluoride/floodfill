@@ -182,13 +182,27 @@ namespace flood {
             Game(new Grid());
         }
 
+        static string EscapableReadLine(ConsoleKey escapekey = ConsoleKey.Escape)
+        {
+            string ret = "";
+            while (true) {
+                ConsoleKeyInfo key = Console.ReadKey();
+                if(key.Key == escapekey || key.Key == ConsoleKey.Enter)
+                    break;
+                ret += key.KeyChar;
+            }
+            return ret == "" ? null : ret;
+        }
+
         public static void LoadGames() {
             //TODO: implement something to abort loading a game. (pressing escape or whatever)
             FileInfo[] files = PrintSaveList();
             if(files.Length == 0)
                 return;
         select_save:
-            string str = Console.ReadLine();
+            string str = EscapableReadLine();
+            if(str == null)
+                return;
             int sel = 0;
             if(!int.TryParse(str, out sel) || sel > files.Length) {
                 Console.WriteLine("Please try again.");
@@ -201,7 +215,10 @@ namespace flood {
             FileInfo[] files = PrintSaveList("delete");
             if(files.Length == 0)
                 return;
-            string[] strings = Console.ReadLine().Split(' ');
+            string line = EscapableReadLine();
+            if(line == null)
+                return;
+            string[] strings = line.Split(' ');
             foreach(string str in strings) {
                 int sel = 0;
                 if(!Directory.Exists(SAVE_DIR)) {
