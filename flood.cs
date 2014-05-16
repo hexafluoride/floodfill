@@ -167,7 +167,7 @@ namespace flood {
                 Environment.Exit(1);
             }
             string cont = File.ReadAllText(filename);
-            if(filename.Contains("_")) {
+            if(Path.GetFileName(filename).Contains("_")) {
                 string[] lines = File.ReadAllLines(filename);
                 int stage = int.Parse(lines[4].Split(new char[] { ':' })[0]);
                 int level = int.Parse(lines[4].Split(new char[] { ':' })[1]);
@@ -182,13 +182,14 @@ namespace flood {
             Game(new Grid());
         }
 
-        static string EscapableReadLine(ConsoleKey escapekey = ConsoleKey.Escape)
-        {
+        static string EscapableReadLine(ConsoleKey escapekey = ConsoleKey.Escape) {
             string ret = "";
-            while (true) {
+            while(true) {
                 ConsoleKeyInfo key = Console.ReadKey();
-                if(key.Key == escapekey || key.Key == ConsoleKey.Enter)
+                if(key.Key == ConsoleKey.Enter)
                     break;
+                else if(key.Key == escapekey)
+                    return null;
                 ret += key.KeyChar;
             }
             return ret == "" ? null : ret;
@@ -204,6 +205,11 @@ namespace flood {
             if(str == null)
                 return;
             int sel = 0;
+            if(!Directory.Exists(SAVE_DIR)) {
+                Console.Error.WriteLine("ERROR: Save directory disappeared! Press any key to continue");
+                Console.ReadKey(false);
+                return;
+            }
             if(!int.TryParse(str, out sel) || sel > files.Length) {
                 Console.WriteLine("Please try again.");
                 goto select_save;
@@ -222,7 +228,8 @@ namespace flood {
             foreach(string str in strings) {
                 int sel = 0;
                 if(!Directory.Exists(SAVE_DIR)) {
-                    Console.Error.WriteLine("ERROR: Save directory disappeared!");
+                    Console.Error.WriteLine("ERROR: Save directory disappeared! Press any key to continue");
+                    Console.ReadKey(false);
                     return;
                 }
                 if(!int.TryParse(str, out sel) || sel > files.Length) {
@@ -230,7 +237,8 @@ namespace flood {
                     continue;
                 } else {
                     if(!Directory.Exists(SAVE_DIR)) {
-                        Console.Error.WriteLine("ERROR: Save directory disappeared!");
+                        Console.Error.WriteLine("ERROR: Save directory disappeared! Press any key to continue");
+                        Console.ReadKey(false);
                         return;
                     }
                     files[sel - 1].Delete();
@@ -372,7 +380,7 @@ namespace flood {
             Random rnd = new Random(s);
             for(int x = 0; x < localwidth; x++) {
                 for(int y = 0; y < localheight; y++) {
-                    arr[x, y] = rnd.Next(localmax)+1;
+                    arr[x, y] = rnd.Next(localmax) + 1;
                 }
             }
             arr[width / 2, height / 2] = 0;
@@ -456,7 +464,7 @@ namespace flood {
         public int GetBestColor() {
             //basically the same algorithm as the landfill but it doesn't fill but stores 
             //which neighbouring color is the most common. Only a heuristic - not really the best option.
-            int[] colors = new int[localmax+1];
+            int[] colors = new int[localmax + 1];
             int originalcolor = arr[localwidth / 2, localheight / 2];
             bool[,] visited = new bool[localwidth, localheight];
             var nodes = new Stack<KeyValuePair<int, int>>();
