@@ -11,6 +11,7 @@ namespace flood {
         static string SAVE_DIR = "./.ffill_saves";
         static int LEVELS_PER_STAGE = 10;
         static int STAGES = 5;
+        static Grid previousGrid = new Grid();
         public static void Main(string[] args) {
             if(args.Length != 0) {
                 if(args[0] == "--help") {
@@ -51,10 +52,10 @@ namespace flood {
         static void Challenge() {
             Challenge(new Grid(19, 19, 4));
         }
-        private static void Challenge(Grid start, int c_width = 19, int c_height = 19, int c_max = 4, int level = 0, int stage = 1) {
+        private static void Challenge(Grid start, int c_width = 19, int c_height = 19, int c_max = 4, int level = 1, int stage = 1) {
             bool first = true;
-            for(int i = stage; i < STAGES + 1; i++) {
-                for(int k = level; k < LEVELS_PER_STAGE; k++) {
+            for(int i = stage; i <= STAGES; i++) {
+                for(int k = level; k <= LEVELS_PER_STAGE; k++) {
                     GameResult win = GameResult.Empty;
                     if(first) {
                         win = Game(start, LEVELS_PER_STAGE - k, string.Format("Stage {0}, level {1}", i, k), true, i, k);
@@ -83,8 +84,11 @@ namespace flood {
 
         // TODO: Clean this up and break it into functions
         private static GameResult Game(Grid grid, int tolerance = 5, string display = "", bool challenge = false, int stage = -1, int level = -1) {
+            Console.Clear();
             int moves = grid.GetNumberOfSteps() + tolerance;
             bool savedirty = false; // only confirm quitting if game is not saved.
+            if(challenge && (stage > 1 || level > 1))
+                savedirty = true; // the user has made some progress
             PrintGame(grid, challenge, display, moves);
             while(!grid.Solved) {
                 if(challenge && moves == 0) {
@@ -129,11 +133,20 @@ namespace flood {
         }
 
         private static void PrintGame(Grid grid, bool challengeMode, string display, int moves) {
-            Console.Clear();
+            Console.SetCursorPosition(0,0);
+            ClearCurrentConsoleLine();
             Console.Write(display);
             if(challengeMode)
                 Console.WriteLine(", {0} moves left.", moves);
             grid.PrintOut();
+        }
+        public static void ClearCurrentConsoleLine()
+        {
+            int currentLineCursor = Console.CursorTop;
+            Console.SetCursorPosition(0, Console.CursorTop);
+            for (int i = 0; i < Console.WindowWidth; i++)
+                Console.Write(" ");
+            Console.SetCursorPosition(0, currentLineCursor);
         }
 
         public static void SaveGame(Grid grid, bool challengeMode, int stage, int level) {
@@ -196,7 +209,6 @@ namespace flood {
         }
 
         public static void LoadGames() {
-            //TODO: implement something to abort loading a game. (pressing escape or whatever)
             FileInfo[] files = PrintSaveList();
             if(files.Length == 0)
                 return;
